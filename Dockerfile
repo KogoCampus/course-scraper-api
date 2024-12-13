@@ -22,10 +22,9 @@ COPY . .
 
 # Build frontend
 WORKDIR /app/static
+
 # Clean install and force platform for Rollup
-RUN npm ci --platform=linux --arch=x64 \
-    && npm rebuild @rollup/rollup-linux-x64-gnu \
-    && npm run build
+RUN npm run build 
 
 # Return to app directory
 WORKDIR /app
