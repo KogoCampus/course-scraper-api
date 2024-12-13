@@ -8,12 +8,12 @@ function SchoolList() {
   const [searchTerm, setSearchTerm] = useState('');
   const [pagination, setPagination] = useState({
     current_page: 1,
-    per_page: 10,
+    per_page: 5,
     total_items: 0,
     total_pages: 0
   });
 
-  const PER_PAGE_OPTIONS = [10, 30, 50];
+  const PER_PAGE_OPTIONS = [5, 10, 30];
   const navigate = useNavigate();
 
   useEffect(() => {
