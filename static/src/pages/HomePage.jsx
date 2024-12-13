@@ -7,7 +7,7 @@ function HomePage() {
   return (
     <div>
       <div className="d-flex justify-content-between align-items-center mb-4">
-        <h1>Dashboard</h1>
+        <h1>Home</h1>
         <div>
           <Link to="/create" className="btn btn-primary me-2">
             Create New Entry
