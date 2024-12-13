@@ -3,6 +3,8 @@ FROM python:3.11-slim
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
     curl \
+    build-essential \
+    python3-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Node.js
@@ -23,8 +25,9 @@ COPY . .
 # Build frontend
 WORKDIR /app/static
 
-# Clean install and force platform for Rollup
-RUN npm run build 
+# Install dependencies and build
+RUN npm install && \
+    npm run build
 
 # Return to app directory
 WORKDIR /app

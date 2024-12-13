@@ -7,14 +7,7 @@ from app.api import courses, admin, ui
 app = FastAPI(
     title="Course Scraper API",
     description="API for managing and accessing course data from various schools",
-    version="1.0.0",
-    docs_url="/api/docs",
-    redoc_url="/api/redoc",
-    openapi_url="/api/openapi.json",
-    servers=[
-        {"url": "https://course-scraper.kogocampus.com", "description": "Production server"},
-        {"url": "http://localhost:8000", "description": "Local development server"}
-    ]
+    version="1.0.0"
 )
 
 # CORS configuration
@@ -31,9 +24,9 @@ app.mount("/static/css", StaticFiles(directory="static/css"), name="css")
 app.mount("/assets", StaticFiles(directory="static/dist/assets"), name="assets")
 
 # Include routers
-app.include_router(courses.router, prefix="/api", tags=["courses"])
-app.include_router(admin.router, prefix="/api/admin", tags=["admin"])
-app.include_router(ui.router, tags=["ui"])
+app.include_router(courses.router, prefix="/api")
+app.include_router(admin.router, prefix="/api/admin")
+app.include_router(ui.router)
 
 @app.get("/{full_path:path}")
 async def serve_spa(full_path: str):
