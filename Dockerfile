@@ -1,32 +1,37 @@
 FROM python:3.11-slim
 
-WORKDIR /app
-
-# Install Node.js
+# Install system dependencies
 RUN apt-get update && apt-get install -y \
-    nodejs \
-    npm \
+    curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Python dependencies
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+# Install Node.js
+RUN curl -fsSL https://deb.nodesource.com/setup_18.x | bash - \
+    && apt-get install -y nodejs \
+    && rm -rf /var/lib/apt/lists/*
 
-# Copy application code
+# Set working directory
+WORKDIR /app
+
+# Copy Python requirements and install
+COPY requirements.txt .
+RUN pip install -r requirements.txt
+
+# Copy the rest of the application
 COPY . .
 
-# Install frontend dependencies and build
+# Build frontend
 WORKDIR /app/static
-RUN npm install
-RUN npm run build
+# Clean install and force platform for Rollup
+RUN npm ci --platform=linux --arch=x64 \
+    && npm rebuild @rollup/rollup-linux-x64-gnu \
+    && npm run build
 
 # Return to app directory
 WORKDIR /app
 
-# Create script to build frontend and start server
-RUN echo '#!/bin/bash\ncd /app/static && npm run build && cd /app && exec uvicorn app.main:app --host 0.0.0.0 --port 8000' > /app/start.sh
-RUN chmod +x /app/start.sh
-
+# Expose port
 EXPOSE 8000
 
-CMD ["/app/start.sh"] 
+# Run the application
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"] 

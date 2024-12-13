@@ -1,9 +1,26 @@
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from app.api import courses, admin, ui
 
-app = FastAPI(title="Course Scraper API")
+app = FastAPI(
+    title="Course Scraper API",
+    description="API for managing and accessing course data from various schools",
+    version="1.0.0",
+    docs_url="/api/docs",
+    redoc_url="/api/redoc",
+    openapi_url="/api/openapi.json"
+)
+
+# CORS configuration
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # Mount static files first (CSS, images, etc.)
 app.mount("/static/css", StaticFiles(directory="static/css"), name="css")

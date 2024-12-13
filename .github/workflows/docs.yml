@@ -1,0 +1,92 @@
+name: Deploy API Documentation
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install fastapi
+
+      - name: Generate OpenAPI spec
+        run: |
+          mkdir -p docs
+          python -c "
+          from app.main import app
+          import json
+          
+          with open('docs/openapi.json', 'w') as f:
+              json.dump(app.openapi(), f, indent=2)
+          "
+
+      - name: Setup Swagger UI
+        run: |
+          # Download and extract Swagger UI
+          wget https://github.com/swagger-api/swagger-ui/archive/refs/tags/v5.11.0.tar.gz
+          tar -xzf v5.11.0.tar.gz
+          
+          # Copy necessary files
+          cp -r swagger-ui-5.11.0/dist/* docs/
+          rm docs/index.html
+          
+          # Create custom index.html
+          cat > docs/index.html << 'EOL'
+          <!DOCTYPE html>
+          <html lang="en">
+            <head>
+              <meta charset="UTF-8">
+              <title>Course Scraper API Documentation</title>
+              <link rel="stylesheet" type="text/css" href="./swagger-ui.css" />
+              <link rel="icon" type="image/png" href="./favicon-32x32.png" sizes="32x32" />
+              <link rel="icon" type="image/png" href="./favicon-16x16.png" sizes="16x16" />
+              <style>
+                html { box-sizing: border-box; overflow: -moz-scrollbars-vertical; overflow-y: scroll; }
+                *, *:before, *:after { box-sizing: inherit; }
+                body { margin: 0; background: #fafafa; }
+              </style>
+            </head>
+            <body>
+              <div id="swagger-ui"></div>
+              <script src="./swagger-ui-bundle.js"></script>
+              <script src="./swagger-ui-standalone-preset.js"></script>
+              <script>
+                window.onload = () => {
+                  window.ui = SwaggerUIBundle({
+                    url: './openapi.json',
+                    dom_id: '#swagger-ui',
+                    deepLinking: true,
+                    presets: [
+                      SwaggerUIBundle.presets.apis,
+                      SwaggerUIStandalonePreset
+                    ],
+                    plugins: [
+                      SwaggerUIBundle.plugins.DownloadUrl
+                    ],
+                    layout: "StandaloneLayout",
+                  });
+                };
+              </script>
+            </body>
+          </html>
+          EOL
+
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./docs
+          force_orphan: true 
