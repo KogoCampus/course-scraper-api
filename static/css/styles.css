@@ -1,0 +1,26 @@
+.preview-container {
+    max-height: 400px;
+    overflow-y: auto;
+    background: #f8f9fa;
+    padding: 1rem;
+    border-radius: 4px;
+}
+
+.s3-item {
+    cursor: pointer;
+    padding: 0.5rem;
+    border-radius: 4px;
+}
+
+.s3-item:hover {
+    background: #f8f9fa;
+}
+
+.breadcrumb-item {
+    cursor: pointer;
+}
+
+.loading {
+    opacity: 0.5;
+    pointer-events: none;
+} 
