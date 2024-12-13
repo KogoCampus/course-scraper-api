@@ -7,8 +7,8 @@ class Settings(BaseSettings):
     REDIS_PORT: int = 6379
 
     # AWS Configuration
-    AWS_ACCESS_KEY_ID: str
-    AWS_SECRET_ACCESS_KEY: str
+    AWS_ACCESS_KEY_ID: str = ""
+    AWS_SECRET_ACCESS_KEY: str = ""
     AWS_REGION: str = "us-west-2"
     S3_BUCKET: str = "production-course-scraper"
 
