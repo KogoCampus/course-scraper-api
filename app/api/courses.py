@@ -11,6 +11,39 @@ from app.config.settings import settings
 
 router = APIRouter()
 
+@router.get("/course-listing")
+async def list_available_schools(
+    auth_info: dict = Depends(authenticate)
+):
+    """List all available schools with course listings"""
+    try:
+        # Get all school entries from Redis
+        school_keys = redis_client.keys("school:*")
+        schools = []
+        
+        for key in school_keys:
+            try:
+                school_name = key.split(':')[1]
+                schools.append({
+                    "name": school_name,
+                    "endpoint": f"/api/course-listing/{school_name}"
+                })
+            except Exception:
+                continue
+
+        # Sort schools by name
+        schools.sort(key=lambda x: x['name'])
+        
+        return JSONResponse(content={
+            "schools": schools,
+            "total": len(schools)
+        })
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error fetching available schools: {str(e)}"
+        )
+
 @router.get("/course-listing/{school_name}")
 async def get_course_listing(
     school_name: str,
