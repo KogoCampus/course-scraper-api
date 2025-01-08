@@ -1,7 +1,9 @@
 import boto3
 import redis
-from app.config.settings import settings
 from fastapi import HTTPException
+
+from app.config.settings import settings
+
 
 # Redis client with connection checking
 def get_redis_client():

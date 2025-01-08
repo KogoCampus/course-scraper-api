@@ -1,15 +1,17 @@
+import json
+import httpx
+import redis
 from fastapi import APIRouter, HTTPException, Request, Query, Form, Depends
 from fastapi.responses import JSONResponse
+from typing import Optional
+from base64 import b64encode
+from datetime import datetime
+
 from app.core.storage import redis_client, s3_client
 from app.config.settings import settings
-import json
-from typing import Optional
-import redis
-from base64 import b64encode
-import httpx
-from datetime import datetime
 from app.core.auth import verify_admin_auth
 from app.api.courses import get_course_listing
+
 
 router = APIRouter(dependencies=[Depends(verify_admin_auth)])
 

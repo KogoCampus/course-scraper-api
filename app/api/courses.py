@@ -2,10 +2,12 @@ from fastapi import APIRouter, HTTPException, Depends
 from fastapi.responses import JSONResponse
 import json
 import boto3
+from botocore.exceptions import ClientError
+
+from app.core.auth import authenticate
 from app.core.storage import redis_client, s3_client
 from app.config.settings import settings
-from botocore.exceptions import ClientError
-from app.core.auth import authenticate
+
 
 router = APIRouter()
 

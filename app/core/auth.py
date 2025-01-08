@@ -1,9 +1,11 @@
 from fastapi import HTTPException, Depends, Header
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials, HTTPBasic, HTTPBasicCredentials
 import httpx
-from app.config.settings import settings
 import logging
 import secrets
+
+from app.config.settings import settings
+
 
 # Setup logging
 logger = logging.getLogger("student_manager_auth")
