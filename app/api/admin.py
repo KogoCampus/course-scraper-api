@@ -409,7 +409,8 @@ async def test_course_listing(
     """Test course listing API as admin"""
     try:
         # Pass admin auth through to course listing
-        return await get_course_listing(school_name, {"type": "admin"})
+        # return await get_course_listing(school_name, {"type": "admin"})
+        return await get_course_listing(school_name)
     except Exception as e:
         raise HTTPException(
             status_code=500,
