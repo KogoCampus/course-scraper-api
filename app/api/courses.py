@@ -13,7 +13,7 @@ router = APIRouter()
 
 @router.get("/course-listing")
 async def list_available_schools(
-    auth_info: dict = Depends(authenticate)
+    # auth_info: dict = Depends(authenticate)
 ):
     """List all available schools with course listings"""
     try:
@@ -47,7 +47,7 @@ async def list_available_schools(
 @router.get("/course-listing/{school_name}")
 async def get_course_listing(
     school_name: str,
-    auth_info: dict = Depends(authenticate)
+    # auth_info: dict = Depends(authenticate)
 ):
     # Try to get the S3 key from Redis
     s3_key = redis_client.get(f"school:{school_name}")
