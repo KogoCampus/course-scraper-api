@@ -14,14 +14,16 @@ RUN curl -fsSL https://deb.nodesource.com/setup_18.x | bash - \
 
 # Install pnpm and uv
 RUN npm install -g pnpm && \
-    curl -LsSf https://astral.sh/uv/install.sh | sh
+    curl -LsSf https://astral.sh/uv/install.sh | sh && \
+    echo 'export PATH="$HOME/.cargo/bin:$PATH"' >> ~/.bashrc && \
+    . ~/.bashrc
 
 # Set working directory
 WORKDIR /app
 
 # Copy project and install dependencies
 COPY . .
-RUN uv sync --system
+RUN . ~/.cargo/env && uv sync --system
 
 # Build frontend
 WORKDIR /app/ui
@@ -37,4 +39,4 @@ WORKDIR /app
 EXPOSE 8000
 
 # Run the application
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"] 
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
