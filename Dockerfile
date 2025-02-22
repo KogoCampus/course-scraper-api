@@ -19,12 +19,9 @@ RUN npm install -g pnpm && \
 # Set working directory
 WORKDIR /app
 
-# Copy pyproject.toml and install dependencies
-COPY pyproject.toml .
-RUN uv pip install --system .
-
-# Copy the rest of the application
+# Copy project and install dependencies
 COPY . .
+RUN uv sync --system
 
 # Build frontend
 WORKDIR /app/ui
