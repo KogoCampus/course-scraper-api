@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
+import os
 
 from app.api import courses, admin
 
@@ -21,17 +22,17 @@ app = FastAPI(
 #     allow_headers=["*"],
 # )
 
-# Mount static files first (CSS, images, etc.)
-app.mount("/static/css", StaticFiles(directory="static/css"), name="css")
-app.mount("/assets", StaticFiles(directory="static/dist/assets"), name="assets")
-
 # Include routers
 app.include_router(courses.router, prefix="/api")
 app.include_router(admin.router, prefix="/api/admin")
 
+# Mount static files from dist/assets
+app.mount("/assets", StaticFiles(directory="ui/dist/assets"), name="assets")
+
+# Serve SPA for all other routes
 @app.get("/{full_path:path}")
 async def serve_spa(full_path: str):
-    return FileResponse("static/dist/index.html")
+    return FileResponse("ui/dist/index.html")
 
 if __name__ == "__main__":
     import uvicorn

@@ -54,12 +54,16 @@ async def get_course_listing(
     
     if not s3_key:
         raise HTTPException(status_code=404, detail="School not found")
-    
+
     try:
         # Get the file from S3
         response = s3_client.get_object(Bucket=settings.S3_BUCKET, Key=s3_key)
         course_data = json.loads(response['Body'].read().decode('utf-8'))
         return JSONResponse(content=course_data)
     except ClientError as e:
+        print(f"S3 Client Error: {e}")
         raise HTTPException(status_code=500, detail="Error retrieving course data")
+    except Exception as e:
+        print(f"Error: {e}")
+        raise HTTPException(status_code=500, detail=f"Error retrieving course data")
     

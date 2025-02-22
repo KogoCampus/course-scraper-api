@@ -2,30 +2,40 @@
 
 An application that serves school course listings from S3 with Redis caching.
 
+## Development Setup  
+1. Copy .env.example to .env and populate with your values.
+```
+cp .env.example .env
+```
+
+2. Run docker compose to build and run the container:  
+```
+docker compose up
+# or
+sudo docker compose up --build
+```
+
+3. Run the admin UI panel in dev mode:  
+```
+cd ui
+pnpm run dev
+```
+
+4. Navigate to `http://localhost:5173` to access the admin UI panel in your browser.  
+
+Note that  
+- if you make changes to python backend, you need to restart the docker container for the changes to take effect.
+
+
 ## Admin UI Panel
 
-The admin UI panel is available at `http://localhost:8000` after running the application.
+The admin UI panel is available after running the application.
 
 **Default Admin Credentials:**
 ```
-Username: course-scraper
-Password: Z5pGa5hLs850
+Username: admin
+Password: password
 ```
-
-The admin panel allows you to:
-- Test course listing API
-- Manage school entries
-- Monitor Flower tasks
-- Browse S3 files
-
-## API Documentation
-
-### Course Listing API
-```
-GET https://course-scraper.kogocampus.com/api/course-listing/{school_name}
-```
-
-Retrieves course listing data for a specific school.
 
 **Authentication:**
 - Admin: Basic auth with admin credentials (same as admin UI)
@@ -66,19 +76,6 @@ Retrieves course listing data for a specific school.
 - 401: Authentication failed
 - 404: School not found
 - 500: Server error
-
-## Setup
-1. Copy .env.example to .env and populate with your values.
-```
-cp .env.example .env
-```
-
-2. Run docker compose to build and run the container:
-```
-docker compose up
-# or
-sudo docker compose up --build
-```
 
 ## Edit the environment variables for the production environments
 

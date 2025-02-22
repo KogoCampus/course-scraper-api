@@ -1,9 +1,9 @@
 import json
 import httpx
 import redis
-from fastapi import APIRouter, HTTPException, Request, Query, Form, Depends
+from fastapi import APIRouter, HTTPException, Request, Query, Form, Depends, Body
 from fastapi.responses import JSONResponse
-from typing import Optional
+from typing import Optional, Dict, Any
 from base64 import b64encode
 from datetime import datetime
 
@@ -14,64 +14,6 @@ from app.api.courses import get_course_listing
 
 
 router = APIRouter(dependencies=[Depends(verify_admin_auth)])
-
-@router.get("/s3-list")
-async def list_s3_contents(
-    prefix: Optional[str] = Query(None, description="S3 prefix to list"),
-    continuation_token: Optional[str] = Query(None),
-    max_keys: int = Query(1000, ge=1, le=1000)
-):
-    try:
-        prefix = prefix or ""
-        if prefix and not prefix.endswith('/'):
-            prefix += '/'
-
-        params = {
-            "Bucket": settings.S3_BUCKET,
-            "Prefix": prefix,
-            "Delimiter": '/',
-            "MaxKeys": max_keys
-        }
-        
-        if continuation_token:
-            params["ContinuationToken"] = continuation_token
-
-        response = s3_client.list_objects_v2(**params)
-
-        # Process directories (common prefixes)
-        directories = [
-            {
-                "name": p["Prefix"].rstrip('/').split('/')[-1] or p["Prefix"],
-                "path": p["Prefix"],
-                "type": "directory"
-            }
-            for p in response.get("CommonPrefixes", [])
-        ]
-
-        # Process files
-        files = [
-            {
-                "name": obj["Key"].split('/')[-1],
-                "path": obj["Key"],
-                "size": obj["Size"],
-                "last_modified": obj["LastModified"].isoformat(),
-                "type": "file"
-            }
-            for obj in response.get("Contents", [])
-            if not obj["Key"].endswith('/')
-            and (not prefix or obj["Key"] != prefix)
-        ]
-
-        return JSONResponse(content={
-            "items": directories + files,
-            "pagination": {
-                "is_truncated": response.get("IsTruncated", False),
-                "next_continuation_token": response.get("NextContinuationToken"),
-                "key_count": response.get("KeyCount", 0)
-            }
-        })
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/s3-preview/{s3_key:path}")
 async def preview_s3_file(s3_key: str):
@@ -151,10 +93,12 @@ async def list_school_entries(
             try:
                 school_name = key.split(':')[1]
                 s3_key = redis_client.get(key)
+                updated_at = redis_client.get(f"school:{school_name}:updated_at") or None
                 if s3_key:
                     schools.append({
                         "name": school_name,
-                        "course_data_path": s3_key
+                        "course_data_path": s3_key,
+                        "updated_at": updated_at
                     })
             except Exception:
                 continue
@@ -221,186 +165,6 @@ async def delete_school_entry(school_name: str):
             detail=f"Error deleting school entry: {str(e)}"
         ) 
 
-@router.post("/flower-tasks")
-async def create_flower_task(task_name: str = Form(...)):
-    """Create a new Flower task"""
-    try:
-        # Create basic auth header
-        credentials = f"{settings.FLOWER_BASIC_AUTH_USERNAME}:{settings.FLOWER_BASIC_AUTH_PASSWORD}"
-        auth_header = b64encode(credentials.encode()).decode()
-
-        async with httpx.AsyncClient() as client:
-            # Create task
-            response = await client.post(
-                f"{settings.FLOWER_URL}/api/task/async-apply/scraper_task",
-                headers={
-                    "Authorization": f"Basic {auth_header}",
-                    "Content-Type": "application/json"
-                },
-                json={"args": [task_name]}
-            )
-            
-            if response.status_code == 200:
-                task_data = response.json()
-                task_id = task_data.get('task-id')
-                
-                # Get task status
-                status_response = await client.get(
-                    f"{settings.FLOWER_URL}/api/task/info/{task_id}",
-                    headers={"Authorization": f"Basic {auth_header}"}
-                )
-                
-                task_status = "PENDING"
-                if status_response.status_code == 200:
-                    status_data = status_response.json()
-                    task_status = status_data.get('state', 'PENDING')
-
-                # Store task in Redis
-                task_key = f"flower_task:{task_name}"
-                task_data = {
-                    "task_name": task_name,
-                    "task_id": task_id,
-                    "timestamp": datetime.now().isoformat(),
-                    "status": task_status
-                }
-                redis_client.hset(task_key, mapping=task_data)
-                
-                return JSONResponse(content={
-                    "status": "success",
-                    "message": f"Task '{task_name}' created successfully",
-                    "data": {
-                        "task_id": task_id,
-                        "task_status": task_status
-                    }
-                })
-            else:
-                raise HTTPException(
-                    status_code=response.status_code,
-                    detail=f"Failed to create task: {response.text}"
-                )
-                
-    except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Error creating Flower task: {str(e)}"
-        )
-
-@router.get("/flower-tasks")
-async def list_flower_tasks(
-    page: int = Query(1, ge=1),
-    per_page: int = Query(10, ge=1, le=50)
-):
-    """List Flower tasks with fresh data"""
-    try:
-        # Get task IDs from Redis (we still need this to know what tasks exist)
-        task_keys = redis_client.keys("flower_task:*")
-        tasks = []
-        
-        # Create basic auth header for Flower
-        credentials = f"{settings.FLOWER_BASIC_AUTH_USERNAME}:{settings.FLOWER_BASIC_AUTH_PASSWORD}"
-        auth_header = b64encode(credentials.encode()).decode()
-        
-        # Fetch fresh status for each task
-        async with httpx.AsyncClient() as client:
-            for key in task_keys:
-                task_data = redis_client.hgetall(key)
-                if not task_data or 'task_id' not in task_data:
-                    continue
-                    
-                # Get fresh task status from Flower
-                response = await client.get(
-                    f"{settings.FLOWER_URL}/api/task/info/{task_data['task_id']}",
-                    headers={"Authorization": f"Basic {auth_header}"}
-                )
-                
-                if response.status_code == 200:
-                    flower_data = response.json()
-                    tasks.append({
-                        "task_name": task_data['task_name'],
-                        "task_id": task_data['task_id'],
-                        "timestamp": task_data['timestamp'],
-                        "status": flower_data.get('state', 'UNKNOWN'),
-                        "result": flower_data.get('result'),
-                        "runtime": flower_data.get('runtime'),
-                        "worker": flower_data.get('worker')
-                    })
-        
-        # Sort tasks by timestamp (newest first)
-        tasks.sort(key=lambda x: x['timestamp'], reverse=True)
-        
-        # Calculate pagination
-        total_items = len(tasks)
-        total_pages = (total_items + per_page - 1) // per_page
-        start_idx = (page - 1) * per_page
-        end_idx = start_idx + per_page
-        
-        return JSONResponse(content={
-            "tasks": tasks[start_idx:end_idx],
-            "pagination": {
-                "current_page": page,
-                "per_page": per_page,
-                "total_items": total_items,
-                "total_pages": total_pages
-            }
-        })
-    except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Error fetching Flower tasks: {str(e)}"
-        )
-
-@router.get("/flower-tasks/{task_id}")
-async def get_task_status(task_id: str):
-    """Get status of a specific task"""
-    try:
-        credentials = f"{settings.FLOWER_BASIC_AUTH_USERNAME}:{settings.FLOWER_BASIC_AUTH_PASSWORD}"
-        auth_header = b64encode(credentials.encode()).decode()
-
-        async with httpx.AsyncClient() as client:
-            response = await client.get(
-                f"{settings.FLOWER_URL}/api/task/info/{task_id}",
-                headers={"Authorization": f"Basic {auth_header}"}
-            )
-            
-            if response.status_code == 200:
-                status_data = response.json()
-                return JSONResponse(content=status_data)
-            else:
-                raise HTTPException(
-                    status_code=response.status_code,
-                    detail="Failed to fetch task status"
-                )
-    except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Error fetching task status: {str(e)}"
-        ) 
-
-async def check_flower_health():
-    """Check if Flower is available"""
-    try:
-        credentials = f"{settings.FLOWER_BASIC_AUTH_USERNAME}:{settings.FLOWER_BASIC_AUTH_PASSWORD}"
-        auth_header = b64encode(credentials.encode()).decode()
-
-        async with httpx.AsyncClient() as client:
-            response = await client.get(
-                f"{settings.FLOWER_URL}/metrics",
-                headers={"Authorization": f"Basic {auth_header}"},
-                timeout=5.0  # 5 seconds timeout
-            )
-            return response.status_code == 200
-    except Exception:
-        return False
-
-@router.get("/flower-health")
-async def get_flower_health():
-    """Get Flower service health status"""
-    is_healthy = await check_flower_health()
-    return JSONResponse(content={
-        "healthy": is_healthy,
-        "flower_url": settings.FLOWER_URL
-    })
-
 @router.get("/test-course-listing/{school_name}")
 async def test_course_listing(
     school_name: str,
@@ -415,4 +179,32 @@ async def test_course_listing(
         raise HTTPException(
             status_code=500,
             detail=str(e)
+        )
+
+@router.post("/s3-update")
+async def update_s3_file(
+    file_path: str = Body(..., description="S3 file path to update"),
+    content: Dict[str, Any] = Body(..., description="New JSON content")
+):
+    """Update an existing S3 file with new JSON content"""
+    try:
+        # Convert content to JSON string
+        json_content = json.dumps(content, indent=2)
+        
+        # Update the file in S3
+        s3_client.put_object(
+            Bucket=settings.S3_BUCKET,
+            Key=file_path,
+            Body=json_content,
+            ContentType='application/json'
+        )
+
+        return JSONResponse(content={
+            "status": "success",
+            "message": f"File {file_path} updated successfully"
+        })
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error updating S3 file: {str(e)}"
         )

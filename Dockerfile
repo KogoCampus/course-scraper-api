@@ -12,22 +12,26 @@ RUN curl -fsSL https://deb.nodesource.com/setup_18.x | bash - \
     && apt-get install -y nodejs \
     && rm -rf /var/lib/apt/lists/*
 
+# Install pnpm and uv
+RUN npm install -g pnpm && \
+    curl -LsSf https://astral.sh/uv/install.sh | sh
+
 # Set working directory
 WORKDIR /app
 
-# Copy Python requirements and install
-COPY requirements.txt .
-RUN pip install -r requirements.txt
+# Copy pyproject.toml and install dependencies
+COPY pyproject.toml .
+RUN uv pip install --system .
 
 # Copy the rest of the application
 COPY . .
 
 # Build frontend
-WORKDIR /app/static
+WORKDIR /app/ui
 
 # Install dependencies and build
-RUN npm install && \
-    npm run build
+RUN pnpm install --force && \
+    pnpm run build
 
 # Return to app directory
 WORKDIR /app

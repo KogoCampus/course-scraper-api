@@ -10,9 +10,8 @@ services:
       - REDIS_PORT=6379
     volumes:
       - .:/app:delegated
-      - /app/static/node_modules
-      - /app/static/dist
-    command: sh -c "cd /app/static && npm install && npm run build && cd /app && uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"
+      - /app/ui/node_modules
+      - /app/ui/dist
 
   redis:
     image: redis:7-alpine
