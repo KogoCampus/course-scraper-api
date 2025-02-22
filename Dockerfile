@@ -1,14 +1,11 @@
-FROM python:3.11-slim
+FROM ghcr.io/astral-sh/uv:python3.11-bookworm-slim
 
-# Install system dependencies
+# Install system dependencies and Node.js
 RUN apt-get update && apt-get install -y \
     curl \
     build-essential \
     python3-dev \
-    && rm -rf /var/lib/apt/lists/*
-
-# Install Node.js
-RUN curl -fsSL https://deb.nodesource.com/setup_18.x | bash - \
+    && curl -fsSL https://deb.nodesource.com/setup_18.x | bash - \
     && apt-get install -y nodejs \
     && rm -rf /var/lib/apt/lists/*
 
@@ -18,9 +15,16 @@ RUN npm install -g pnpm
 # Set working directory
 WORKDIR /app
 
-# Copy project and install dependencies
+# Enable bytecode compilation and copy mode
+ENV UV_COMPILE_BYTECODE=1
+ENV UV_LINK_MODE=copy
+
+# Copy the application
 COPY . .
-RUN pip install -e .
+
+# Install Python dependencies
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv pip install --system -r pyproject.toml
 
 # Build frontend
 WORKDIR /app/ui
@@ -31,6 +35,9 @@ RUN pnpm install --force && \
 
 # Return to app directory
 WORKDIR /app
+
+# Reset the entrypoint
+ENTRYPOINT []
 
 # Expose port
 EXPOSE 8000

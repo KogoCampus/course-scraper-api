@@ -58,6 +58,7 @@ const ActionButtons = styled.div`
   display: flex;
   gap: ${({ theme }) => theme.spacing.sm};
   margin-top: ${({ theme }) => theme.spacing.md};
+  flex-wrap: wrap;
 `;
 
 const ActionButton = styled.button`
@@ -68,12 +69,26 @@ const ActionButton = styled.button`
   color: ${({ theme }) => theme.colors.action};
   cursor: pointer;
   transition: ${({ theme }) => theme.transitions.default};
+  display: flex;
+  align-items: center;
+  gap: ${({ theme }) => theme.spacing.xs};
 
   &:hover {
     background-color: ${({ theme }) => theme.colors.action};
     color: ${({ theme }) => theme.colors.white};
   }
+
+  svg {
+    width: 16px;
+    height: 16px;
+  }
 `;
+
+const DownloadIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+  </svg>
+);
 
 const DeleteButton = styled(ActionButton)`
   border-color: ${({ theme }) => theme.colors.danger};
@@ -198,6 +213,33 @@ const CourseListings: React.FC = () => {
     navigate('/upload-course-listing/new');
   };
 
+  const handleDownload = async (school: School) => {
+    try {
+      const response = await axios.get(`/api/admin/s3-preview/${school.course_data_path}`, {
+        responseType: 'blob'
+      });
+      
+      // Create blob link to download
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `${school.name}-course-listing.json`);
+      
+      // Append to html link element page
+      document.body.appendChild(link);
+      
+      // Start download
+      link.click();
+      
+      // Clean up and remove the link
+      link.parentNode?.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('Error downloading JSON:', err);
+      setError('Failed to download course listing');
+    }
+  };
+
   if (loading) {
     return <Container>Loading...</Container>;
   }
@@ -227,6 +269,10 @@ const CourseListings: React.FC = () => {
               >
                 {deleting === school.name ? 'Deleting...' : 'Delete'}
               </DeleteButton>
+              <ActionButton onClick={() => handleDownload(school)}>
+                <DownloadIcon />
+                Download JSON
+              </ActionButton>
             </ActionButtons>
           </SchoolCard>
         ))}
